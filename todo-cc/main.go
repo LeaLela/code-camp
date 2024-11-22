@@ -2,19 +2,30 @@ package main
 
 import (
 	"fmt"
-	"learajic/code-camp/1/persistence/sqlite"
-	
+	"time"
+	"learajic/code-camp/1/database"
+	"learajic/code-camp/1/infrastructure"
+	"learajic/code-camp/1/service"
 )
 
 
 func main() {
-	db, err := sqlite.NewSqliteDatabase()
+	db, err := database.NewSqliteDatabase()
 	if err != nil {
 		panic(fmt.Sprintf("error while initializing database: %s", err.Error()))
 	}
-	db.GetDb().Ping()
+	err = db.MigrateDB()
 	if err != nil {
-		fmt.Printf("error while pinging db: %s", err.Error())
+		panic(err.Error())
 	}
-	fmt.Println("app entrypoint")
+
+	taskPersistence := infrastructure.NewPersistenceAdapter(db.GetDb())
+
+	todoService := service.NewTodo(taskPersistence)
+	restController := infrastructure.NewRestController(todoService)
+
+	//TODO remove this, test purpose only.
+	taskPersistence.NewTask("Jozo Test", "DESCRIPTION TIE", time.Date(2024, 12, 12, 0, 0, 0, 0, time.UTC), false)
+	_, _ = taskPersistence.GetTask(1)
+	restController.Run()
 }
